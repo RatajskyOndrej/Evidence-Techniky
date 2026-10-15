@@ -2,10 +2,15 @@
 
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\EquipmentController;
+use App\Http\Controllers\ServiceRecordController;
 
-// Po otevření hlavní stránky přejdeme na seznam zařízení
+// Hlavní stránka přesměruje na seznam zařízení
 Route::redirect('/', '/equipment');
 
-// Resource automaticky vytvoří routy pro CRUD
-// Například index, create, store, edit, update a destroy
+// CRUD operace pro zařízení
 Route::resource('equipment', EquipmentController::class);
+
+// Uložení servisního zásahu ke konkrétnímu zařízení
+Route::post('/equipment/{equipment}/service-records',
+    [ServiceRecordController::class, 'store']
+)->name('service-records.store');

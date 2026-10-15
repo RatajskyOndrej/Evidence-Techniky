@@ -2,67 +2,157 @@
 
 @section('content')
 
-    <h2 class="mb-4">{{ $equipment->name }}</h2>
+    <!-- Navigace zpět -->
+    <a href="{{ route('equipment.index') }}" class="back-link">
+        ← Zpět na seznam
+    </a>
 
-    <!-- Základní informace o zařízení -->
-    <div class="card mb-4">
-        <div class="card-body">
-            <p><strong>Evidenční číslo:</strong> {{ $equipment->inventory_number }}</p>
+    <!-- Nadpis detailu zařízení -->
+    <div class="page-heading">
+        <div>
+            <p class="eyebrow">DETAIL ZAŘÍZENÍ</p>
+            <h1>{{ $equipment->name }}</h1>
+            <p class="muted">Evidenční číslo: #{{ $equipment->inventory_number }}</p>
+        </div>
 
-            <p>
-                <strong>Stav:</strong>
+        <a href="{{ route('equipment.edit', $equipment) }}"
+           class="btn btn-outline-light">
+            Upravit zařízení
+        </a>
+    </div>
 
+    <!-- Základní informace -->
+    <div class="stats-grid">
+        <div class="stat-card">
+            <span>Stav zařízení</span>
+            <div class="stat-value">
                 @if($equipment->status === 'active')
-                    <span class="badge bg-success">Aktivní</span>
+                    <span class="status status-active">Aktivní</span>
                 @elseif($equipment->status === 'service')
-                    <span class="badge bg-warning text-dark">V servisu</span>
+                    <span class="status status-service">V servisu</span>
                 @else
-                    <span class="badge bg-danger">Vyřazeno</span>
+                    <span class="status status-retired">Vyřazené</span>
                 @endif
-            </p>
+            </div>
+        </div>
 
-            <p><strong>Datum nákupu:</strong> {{ $equipment->purchased_at }}</p>
+        <div class="stat-card">
+            <span>Datum nákupu</span>
+            <div class="stat-value">
+                {{ \Carbon\Carbon::parse($equipment->purchased_at)->format('d.m.Y') }}
+            </div>
+        </div>
 
-            <!-- Celková cena všech servisních zásahů -->
-            <p>
-                <strong>Celkové servisní náklady:</strong>
+        <div class="stat-card">
+            <span>Celkové servisní náklady</span>
+            <div class="stat-value price">
                 {{ number_format($totalCost, 2, ',', ' ') }} Kč
-            </p>
+            </div>
         </div>
     </div>
 
-    <!-- Servisní historie zařízení -->
-    <h3>Servisní historie</h3>
+    <!-- Formulář pro přidání nového servisu -->
+    <div class="panel mb-4">
+        <div class="panel-header">
+            <div>
+                <h2>Nový servisní zásah</h2>
+                <p class="muted mb-0">Zaznamenejte provedenou opravu nebo údržbu.</p>
+            </div>
+        </div>
 
-    <table class="table table-bordered">
-        <thead class="table-dark">
-        <tr>
-            <th>Datum servisu</th>
-            <th>Popis</th>
-            <th>Cena</th>
-        </tr>
-        </thead>
+        <form action="{{ route('service-records.store', $equipment) }}"
+              method="POST" class="service-form">
+            @csrf
 
-        <tbody>
-        @forelse($equipment->serviceRecords as $record)
-            <tr>
-                <td>{{ $record->serviced_at }}</td>
-                <td>{{ $record->description }}</td>
-                <td>{{ number_format($record->cost, 2, ',', ' ') }} Kč</td>
-            </tr>
-        @empty
-            <!-- Zařízení zatím nemá žádný servis -->
-            <tr>
-                <td colspan="3" class="text-center">
-                    Žádné servisní záznamy.
-                </td>
-            </tr>
-        @endforelse
-        </tbody>
-    </table>
+            <!-- Popis provedeného servisu -->
+            <div class="mb-3">
+                <label class="form-label">Popis servisního zásahu</label>
+                <textarea name="description"
+                          class="form-control"
+                          rows="3"
+                          maxlength="2000"
+                          placeholder="Např. výměna poškozeného kabelu"
+                          required>{{ old('description') }}</textarea>
+            </div>
 
-    <a href="{{ route('equipment.index') }}" class="btn btn-secondary">
-        Zpět na seznam
-    </a>
+            <div class="row g-3">
+                <!-- Datum servisu -->
+                <div class="col-md-6">
+                    <label class="form-label">Datum servisu</label>
+                    <input type="date"
+                           name="serviced_at"
+                           class="form-control"
+                           value="{{ old('serviced_at', date('Y-m-d')) }}"
+                           max="{{ date('Y-m-d') }}"
+                           required>
+                </div>
+
+                <!-- Cena servisního zásahu -->
+                <div class="col-md-6">
+                    <label class="form-label">Cena servisu (Kč)</label>
+                    <input type="number"
+                           name="cost"
+                           class="form-control"
+                           placeholder="0.00"
+                           min="0"
+                           max="99999999.99"
+                           step="0.01"
+                           value="{{ old('cost') }}"
+                           required>
+                </div>
+            </div>
+
+            <!-- Uložení servisního záznamu -->
+            <button type="submit" class="btn btn-primary mt-4">
+                + Uložit servisní zásah
+            </button>
+        </form>
+    </div>
+
+    <!-- Servisní historie konkrétního zařízení -->
+    <div class="panel">
+        <div class="panel-header">
+            <div>
+                <h2>Servisní historie</h2>
+                <p class="muted mb-0">Přehled všech provedených zásahů</p>
+            </div>
+
+            <span class="count-label">
+            {{ $equipment->serviceRecords->count() }} záznamů
+        </span>
+        </div>
+
+        <div class="table-responsive">
+            <table class="table custom-table mb-0">
+                <thead>
+                <tr>
+                    <th>Datum servisu</th>
+                    <th>Popis zásahu</th>
+                    <th>Cena</th>
+                </tr>
+                </thead>
+                <tbody>
+                @forelse($equipment->serviceRecords as $record)
+                    <tr>
+                        <td>
+                            {{ \Carbon\Carbon::parse($record->serviced_at)->format('d.m.Y') }}
+                        </td>
+                        <td>{{ $record->description }}</td>
+                        <td class="price">
+                            {{ number_format($record->cost, 2, ',', ' ') }} Kč
+                        </td>
+                    </tr>
+                @empty
+                    <!-- Zpráva, pokud zařízení zatím nemá servis -->
+                    <tr>
+                        <td colspan="3" class="empty-state">
+                            Zatím nebyl přidán žádný servisní zásah.
+                        </td>
+                    </tr>
+                @endforelse
+                </tbody>
+            </table>
+        </div>
+    </div>
 
 @endsection
